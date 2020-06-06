@@ -9,6 +9,9 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/logrusorgru/aurora"
+	"github.com/sirupsen/logrus"
+
 	"github.com/stiletto/damb/dambfile"
 	"github.com/stiletto/damb/dockerfile"
 )
@@ -18,14 +21,14 @@ type Target struct {
 	Directory    string
 	Dockerfile   string
 	Stage        string
-	Dependencies []string
+	Dependencies map[string]struct{}
 	Seen         bool
 	Built        bool
-	Args         []string
+	Args         map[string]struct{}
 }
 
 func LoadTargets(cfg *dambfile.Dambfile, directory string) ([]*Target, error) {
-	fmt.Printf("Discovering targets in %s\n", directory)
+	fmt.Println(aurora.BrightGreen(fmt.Sprintf("Discovering targets in %s", directory)))
 	dir, err := os.Open(filepath.Join(cfg.DirRoot, directory))
 	if err != nil {
 		return nil, err
@@ -44,35 +47,46 @@ func LoadTargets(cfg *dambfile.Dambfile, directory string) ([]*Target, error) {
 				return nil, err
 			}
 			stagePrefix := name[len(cfg.Dockerfile):]
-			knownStages := make(map[string]*Target)
+			target := &Target{
+				Image:        path.Join(cfg.ImagePrefix, directory+stagePrefix) + ":" + cfg.Args["damb_ref"].Val,
+				Directory:    directory,
+				Dockerfile:   name,
+				Stage:        "",
+				Args:         make(map[string]struct{}),
+				Dependencies: make(map[string]struct{}),
+			}
+			knownStages := make(map[string]struct{})
 			for _, stage := range df.Stages {
 				stageName := stage.Name
 				if stageName != "" {
 					stageName = "." + stageName
 				}
 				stageName = stagePrefix + stageName
-				target := &Target{
-					Image:        path.Join(cfg.ImagePrefix, directory+stageName) + ":" + cfg.Args["damb_ref"].Val,
-					Directory:    directory,
-					Dockerfile:   name,
-					Stage:        stage.Name,
-					Args:         make([]string, 0),
-					Dependencies: make([]string, 0),
-				}
 				for dep := range stage.Dependencies {
-					if depTarget := knownStages[dep]; depTarget != nil {
-						target.Dependencies = append(target.Dependencies, depTarget.Image)
+					if _, ok := knownStages[dep]; ok {
+						// target.Dependencies = append(target.Dependencies, depTarget.Image)
 					} else {
-						target.Dependencies = append(target.Dependencies, dep)
+						target.Dependencies[dep] = struct{}{}
 					}
 				}
 				for arg := range stage.Args {
-					target.Args = append(target.Args, arg)
+					target.Args[arg] = struct{}{}
 				}
-				fmt.Printf(" - %s\n", target.Image)
-				targets = append(targets, target)
-				knownStages[stage.Name] = target
+				knownStages[stage.Name] = struct{}{}
 			}
+			fmt.Printf("- Target %s:\n", target.Image)
+			fmt.Printf("    Directory:  %s\n", target.Directory)
+			fmt.Printf("    Dockerfile: %s\n", target.Dockerfile)
+			fmt.Printf("    Stage:      %s\n", target.Stage)
+			fmt.Printf("    Dependencies:\n")
+			for dep := range target.Dependencies {
+				deptype := "local"
+				if _, _, ok := ImageToDirectory(cfg, dep); !ok {
+					deptype = "foreign"
+				}
+				fmt.Printf("      - %s (%s)\n", dep, deptype)
+			}
+			targets = append(targets, target)
 		}
 	}
 	return targets, nil
@@ -109,7 +123,7 @@ func (c *Cache) Build(image string) error {
 		return fmt.Errorf("Found a loop somewhere around %q", target.Image)
 	}
 	target.Seen = true
-	for _, dep := range target.Dependencies {
+	for dep := range target.Dependencies {
 		err := c.Build(dep)
 		if err != nil {
 			return err
@@ -122,7 +136,7 @@ func (c *Cache) Build(image string) error {
 	buildCmd = append(buildCmd, c.cfg.BuildCmd...)
 	buildCmd = append(buildCmd, "-t", target.Image)
 	buildCmd = append(buildCmd, "-f", target.Dockerfile)
-	for _, k := range target.Args {
+	for k := range target.Args {
 		arg := c.cfg.Args[k]
 		if arg != nil {
 			argValue, err := arg.Get()
@@ -138,7 +152,8 @@ func (c *Cache) Build(image string) error {
 		buildCmd = append(buildCmd, "--target", target.Stage)
 	}
 	buildCmd = append(buildCmd, ".")
-	fmt.Printf("buildCmd: %#v\n", buildCmd)
+	logrus.Debugf("buildCmd: %#v", buildCmd)
+	fmt.Println(aurora.BrightGreen(fmt.Sprintf("Building %s\n", target.Image)))
 	cmd := exec.Command(buildCmd[0], buildCmd[1:]...)
 	cmd.Dir = target.Directory
 	cmd.Stdin = nil
@@ -153,6 +168,9 @@ func (c *Cache) Build(image string) error {
 }
 
 func main() {
+	logrus.SetFormatter(&logrus.TextFormatter{
+		EnvironmentOverrideColors: true,
+	})
 	cfg, err := dambfile.FindAndLoad(".")
 	if err != nil {
 		log.Fatalf("failed to load configuration: %s", err)

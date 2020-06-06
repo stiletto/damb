@@ -23,7 +23,7 @@ func Load(args map[string]*dambfile.Arg, fname string) (*Dockerfile, error) {
 	if err != nil {
 		return nil, err
 	}
-	fmt.Printf("%s:\n", fname)
+	// fmt.Printf("%s:\n", fname)
 	//args := make([]string, 0)
 	// args := make(map[string]string)
 	shlex := shell.NewLex('\\')
@@ -86,10 +86,12 @@ func Load(args map[string]*dambfile.Arg, fname string) (*Dockerfile, error) {
 			}
 			switch cmd := cmd.(type) {
 			case *instructions.CopyCommand:
-				if _, err := strconv.Atoi(cmd.From); err == nil {
-					return nil, fmt.Errorf("Don't reference stages by their number (%s)", cmd.String())
+				if cmd.From != "" {
+					if _, err := strconv.Atoi(cmd.From); err == nil {
+						return nil, fmt.Errorf("Don't reference stages by their number (%s)", cmd.String())
+					}
+					curStage.Dependencies[cmd.From] = struct{}{}
 				}
-				curStage.Dependencies[cmd.From] = struct{}{}
 			case *instructions.ArgCommand:
 				if cmd.Value == nil && args[cmd.Key] == nil {
 					return nil, fmt.Errorf("Stage %q (FROM %s) uses undefined argument: %q", stage.Name, stage.BaseName, cmd.Key)
