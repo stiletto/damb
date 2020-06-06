@@ -1,0 +1,6 @@
+---
+build_cmd:
+ - sudo
+# - podman
+ - docker
+ - build
