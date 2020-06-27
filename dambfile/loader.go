@@ -33,12 +33,10 @@ func Load(fname string) (*Dambfile, error) {
 	if cfg.Args == nil {
 		cfg.Args = make(map[string]*Arg)
 	}
-	cfg.RefName, err = utils.CommandOutput(cfg.RefNameCmd...)
+	err = cfg.Recompute()
 	if err != nil {
 		return nil, err
 	}
-	cfg.Args["damb_root"] = &Arg{Val: cfg.ImagePrefix}
-	cfg.Args["damb_ref"] = &Arg{Val: cfg.RefName}
 	return cfg, nil
 }
 

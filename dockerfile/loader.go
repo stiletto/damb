@@ -2,6 +2,7 @@ package dockerfile
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"strconv"
 
@@ -19,22 +20,26 @@ func Load(args map[string]*dambfile.Arg, fname string) (*Dockerfile, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer f.Close()
+	df, err := parse(args, f)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", fname, err)
+	}
+	return df, nil
+}
+
+func parse(args map[string]*dambfile.Arg, f io.Reader) (*Dockerfile, error) {
 	res, err := parser.Parse(f)
 	if err != nil {
 		return nil, err
 	}
-	// fmt.Printf("%s:\n", fname)
-	//args := make([]string, 0)
-	// args := make(map[string]string)
 	shlex := shell.NewLex('\\')
 	stages, metaArgs, err := instructions.Parse(res.AST)
 	if err != nil {
 		return nil, err
 	}
-	// fmt.Printf("  meta args:\n")
 	knownMetaArgs := make(map[string]string)
 	argExpander := func(word string) (string, error) {
-		// fmt.Printf("Expansion is attempted for %q\n", word)
 		return shlex.ProcessWordWithMap(word, knownMetaArgs)
 	}
 	for _, arg := range metaArgs {
@@ -54,7 +59,6 @@ func Load(args map[string]*dambfile.Arg, fname string) (*Dockerfile, error) {
 				knownMetaArgs[arg.Key] = *arg.Value
 			}
 		}
-		// fmt.Printf("   - %s: %s\n", arg.Key, knownMetaArgs[arg.Key])
 	}
 	df := &Dockerfile{
 		Stages:   make([]Stage, 0, len(stages)),
@@ -76,7 +80,6 @@ func Load(args map[string]*dambfile.Arg, fname string) (*Dockerfile, error) {
 		for _, arg := range metaArgs {
 			curStage.Args[arg.Key] = struct{}{}
 		}
-		// fmt.Printf("  stage %d: from %q as %q\n", i, expandedBase, stage.Name)
 		for _, cmd := range stage.Commands {
 			if expandable, ok := cmd.(instructions.SupportsSingleWordExpansion); ok {
 				err := expandable.Expand(argExpander)
@@ -99,46 +102,8 @@ func Load(args map[string]*dambfile.Arg, fname string) (*Dockerfile, error) {
 				curStage.Args[cmd.Key] = struct{}{}
 			}
 		}
+		delete(curStage.Dependencies, "scratch")
 		df.Stages = append(df.Stages, curStage)
-	}
-	if false {
-		for _, node := range res.AST.Children {
-			if false {
-				fmt.Printf("Node: %s\n", node.Value)
-				fmt.Printf("  flags: %#v\n", node.Flags)
-				for n := node.Next; n != nil; n = n.Next {
-					if len(n.Children) > 0 {
-						fmt.Printf("  dump: %s\n", n.Dump())
-					} else {
-						fmt.Printf("  value: %s\n", n.Value)
-					}
-				}
-			}
-
-			instr, err := instructions.ParseInstruction(node)
-			if err != nil {
-				return nil, err
-			}
-			/*			if expandable, ok := instr.(instructions.SupportsSingleWordExpansion); ok {
-						expandable.Expand(func(word string) (string, error) {
-							fmt.Printf("Expansion is attempted for %q\n", word)
-							return shlex.ProcessWordWithMap(word, args)
-						})
-					}*/
-			//fmt.Printf("instr: %#v\n", instr)
-			switch instr := instr.(type) {
-			case *instructions.ArgCommand:
-				fmt.Printf("  argument %s\n", instr.Key)
-			case *instructions.CopyCommand:
-				fmt.Printf("  copy from %s\n", instr.From)
-			case *instructions.Stage:
-				fmt.Printf("-- stage from %s as %s\n", instr.BaseName, instr.Name)
-			}
-
-			if node.Value == "from" {
-
-			}
-		}
 	}
 	return df, err
 }

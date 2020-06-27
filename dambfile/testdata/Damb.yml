@@ -1,0 +1,4 @@
+---
+args:
+  damb_tag:
+    cmd: ["sh", "-c", "echo junk"]

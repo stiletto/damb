@@ -1,0 +1,1 @@
+tar -c /dev/null /dev/stdin /dev/stdout /dev/stderr /proc/version

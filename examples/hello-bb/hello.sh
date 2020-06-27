@@ -1,2 +1,3 @@
 #!/bin/sh
-exec /bin/hello
+echo "Hello from busybox"
+exec /bin/hello "$@"

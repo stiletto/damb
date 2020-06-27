@@ -1,0 +1,23 @@
+{
+  "Dockerfile": "Dockerfile",
+  "BuildCmd": [
+    "docker",
+    "build"
+  ],
+  "Args": {
+    "damb_prefix": {
+      "Cmd": null,
+      "Val": "local/"
+    },
+    "damb_tag": {
+      "Cmd": null,
+      "Val": "junk"
+    }
+  },
+  "Aliases": null,
+  "CacheFromTags": [
+    "master"
+  ],
+  "ImageTag": "junk",
+  "ImagePrefix": "local/"
+}

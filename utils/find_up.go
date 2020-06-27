@@ -26,5 +26,4 @@ func FindUp(start string, names []string) (string, error) {
 		}
 		dir = nextDir
 	}
-
 }

@@ -1,0 +1,12 @@
+# DAMB:ctx: tar -cv -X .dockerignore hello-c
+# By default damb uses Dockerfile directory as a build context, but if you need to include files from outside of
+# current directory, it's possible to change that by adding a line starting with "# DAMB:ctx: " into your dockerfile
+# If damb encounters a comment like this, it starts the mentioned command and pipes its output to "docker build ... -"
+#
+ARG damb_prefix
+ARG damb_tag
+FROM ${damb_prefix}hello-c.base:${damb_tag}
+
+RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install --no-install-recommends -y build-essential && rm -rvf /var/cache/apt/*
+ADD hello-c/hello.c /root/hello.c
+RUN gcc -O3 -o /root/hello /root/hello.c
