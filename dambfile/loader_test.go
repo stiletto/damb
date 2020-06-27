@@ -11,6 +11,10 @@ func TestLoader(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	err = cfg.Recompute()
+	if err != nil {
+		t.Fatal("Recompute", err)
+	}
 	t.Log(cfg)
 	g := goldie.New(t)
 	g.AssertJson(t, "TestLoader.cfg", cfg)

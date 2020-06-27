@@ -33,10 +33,6 @@ func Load(fname string) (*Dambfile, error) {
 	if cfg.Args == nil {
 		cfg.Args = make(map[string]*Arg)
 	}
-	err = cfg.Recompute()
-	if err != nil {
-		return nil, err
-	}
 	return cfg, nil
 }
 
