@@ -28,6 +28,7 @@ func main() {
 		Run:   damb.Build,
 	}
 	buildCmd.Flags().Bool("no-capture", false, "Don't capture docker output")
+	buildCmd.Flags().String("build-cmd", "", "Override build_cmd")
 	dambCmd.AddCommand(buildCmd)
 	if err := dambCmd.Execute(); err != nil {
 		damb.Fatalf(3, "%s", err)

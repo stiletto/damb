@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -18,6 +19,13 @@ func (damb *Damb) Build(cmd *cobra.Command, args []string) {
 	nocap, err := cmd.Flags().GetBool("no-capture")
 	if err != nil {
 		damb.Fatalf(2, "%s", err)
+	}
+	buildCmdArg, err := cmd.Flags().GetString("build-cmd")
+	if err != nil {
+		damb.Fatalf(2, "--build-cmd: %s", err)
+	}
+	if buildCmdArg != "" {
+		damb.cfg.BuildCmd = strings.Split(buildCmdArg, " ")
 	}
 
 	err = damb.repo.Resolve(targets, func(t *repo.Target) error {
