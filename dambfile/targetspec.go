@@ -17,6 +17,13 @@ func (ts *TargetSpec) IsForeign() bool {
 	return ts.Directory == ""
 }
 
+func (ts *TargetSpec) ImageName() string {
+	// FIXME: it's possible to break this with image like `registry:6666/image`
+	// and damb_prefix `registry` or shorter. I'm not sure yet if i care about this
+	last_colon := strings.LastIndexByte(ts.Image, ':')
+	return ts.Image[:last_colon]
+}
+
 func parseDirStage(dirPlusStage string) (directory string, stage string) {
 	if delimiter := strings.Index(dirPlusStage, "."); delimiter != -1 {
 		directory = dirPlusStage[:delimiter]

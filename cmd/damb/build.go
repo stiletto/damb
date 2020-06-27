@@ -27,6 +27,13 @@ func (damb *Damb) Build(cmd *cobra.Command, args []string) {
 	if buildCmdArg != "" {
 		damb.cfg.BuildCmd = strings.Split(buildCmdArg, " ")
 	}
+	cacheTagArg, err := cmd.Flags().GetStringSlice("cache-tag")
+	if err != nil {
+		damb.Fatalf(2, "--cache-tag: %s", err)
+	}
+	if len(cacheTagArg) > 0 {
+		damb.cfg.CacheFromTags = cacheTagArg
+	}
 
 	err = damb.repo.Resolve(targets, func(t *repo.Target) error {
 		if t.IsForeign() {
@@ -43,6 +50,9 @@ func (damb *Damb) Build(cmd *cobra.Command, args []string) {
 			}
 			buildCmd := make([]string, 0, 8)
 			buildCmd = append(buildCmd, damb.cfg.BuildCmd...)
+			for _, cacheTag := range damb.cfg.CacheFromTags {
+				buildCmd = append(buildCmd, "--cache-from", t.ImageName()+":"+cacheTag)
+			}
 			buildCmd = append(buildCmd, "-t", t.Image)
 			for k := range t.Args {
 				arg := damb.cfg.Args[k]
