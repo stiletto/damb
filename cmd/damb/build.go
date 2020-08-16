@@ -102,13 +102,15 @@ func (damb *Damb) Build(cmd *cobra.Command, args []string) {
 				} else {
 					ctxProc.Stderr = &ctxOut
 				}
-				buildProc.Stdin, err = ctxProc.StdoutPipe()
+				buildStdin, err := ctxProc.StdoutPipe()
 				if err != nil {
 					return fmt.Errorf("ctxCmd StdoutPipe: %w", err)
 				}
+				buildProc.Stdin = buildStdin
 				if err = ctxProc.Start(); err != nil {
 					return fmt.Errorf("%#v: %w", ctxCmd, err)
 				}
+				buildStdin.Close()
 			}
 			err := buildProc.Run()
 			var ctxErr error

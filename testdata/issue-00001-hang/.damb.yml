@@ -1,0 +1,4 @@
+---
+build_cmd:
+ - /bin/false
+ - build
